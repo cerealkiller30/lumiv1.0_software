@@ -227,7 +227,6 @@ void loop() {
     Serial.print("Received: ");
     Serial.println(LoRaData);
   }
-  if(LoRaData == "ARM") {
     while (ss.available() > 0) {
       gps.encode(ss.read());
     }
@@ -333,10 +332,6 @@ void loop() {
           break;
       }
     }
-  }
-  else {
-    Serial.println("Waiting for ARM command from groundstation...");
-  }
 
     if (now - lastLogTime > 100) {
       lastLogTime = now;
