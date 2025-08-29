@@ -42,6 +42,7 @@ SoftwareSerial ss(28,29);
 #define LED_G2 38
 #define LED_B2 32
 #define CAM_PWM 22
+#define BUZZER 3
 
 #define LORA_CS 0
 #define LORA_RST 23
@@ -91,6 +92,7 @@ void setup() {
   pinMode(LED_B2, OUTPUT);
   pinMode(LED_G2, OUTPUT);
   pinMode(LED_R2, OUTPUT);
+  pinMode(BUZZER,OUTPUT);
   digitalWrite(LED_G,HIGH);
   digitalWrite(LED_B,HIGH);
   digitalWrite(LED_R,HIGH);
@@ -200,6 +202,13 @@ void setup() {
   digitalWrite(LED_G,HIGH);
   digitalWrite(LED_R,HIGH);
   digitalWrite(LED_B,HIGH);
+
+  //buzzer added
+  tone(BUZZER, 1000);   // play 1 kHz
+  delay(500);
+  tone(BUZZER, 2000);   // play 2 kHz
+  delay(500);
+  noTone(BUZZER);       // stop
 }
 
 void loop() {
@@ -325,7 +334,6 @@ void loop() {
       }
     }
   }
-
   else {
     Serial.println("Waiting for ARM command from groundstation...");
   }
