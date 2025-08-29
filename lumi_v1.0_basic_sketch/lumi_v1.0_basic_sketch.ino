@@ -69,7 +69,11 @@ int startupIgnoreCount = 30; // Ignore first few readings
 unsigned long apogeeTime = 0;
 bool pyro2Fired = false;
 bool pyro1Fired = false;
+bool ascent = false;
 String LoRaData = "";
+
+float gyroX, gyroY, gyroZ; 
+float angVelMag;   // angular velocity magnitude
 
 enum FlightState { PRELAUNCH, ASCENT, APOGEE, DESCENT, LANDED };
 FlightState currentState = PRELAUNCH;
@@ -151,6 +155,7 @@ void setup() {
   digitalWrite(LED_R,LOW);
   digitalWrite(LED_G,LOW);
   bno08x.enableReport(SH2_LINEAR_ACCELERATION);
+  bno08x.enableReport(SH2_RAW_GYROSCOPE);
   delay(1500);
   digitalWrite(LED_R,HIGH);
   digitalWrite(LED_G,HIGH);
@@ -213,7 +218,7 @@ void loop() {
     Serial.print("Received: ");
     Serial.println(LoRaData);
   }
-  
+  if(LoRaData == "ARM") {
     while (ss.available() > 0) {
       gps.encode(ss.read());
     }
@@ -236,6 +241,17 @@ void loop() {
         Serial.println(acc_y, 3);
       }
     }
+    if (bno08x.getSensorEvent(&sensorValue)) {
+      if (sensorValue.sensorId == SH2_RAW_GYROSCOPE) {
+        gyroX = sensorValue.un.gyroscope.x;  // rad/s
+        gyroY = sensorValue.un.gyroscope.y;
+        gyroZ = sensorValue.un.gyroscope.z;
+
+        // total angular velocity magnitude
+        angVelMag = sqrt(gyroX*gyroX + gyroY*gyroY + gyroZ*gyroZ);
+      }
+    }
+
     if (startupIgnoreCount > 0) {
       startupIgnoreCount--;
       return;
@@ -246,16 +262,17 @@ void loop() {
       }
       if (kalman_alt > maxAltitude) {
         maxAltitude = kalman_alt;
-      } else if (!apogeeDetected && (maxAltitude - kalman_alt) >= DROP_THRESHOLD && acc_y<=0.5 && maxAcc_y>=12){ //(change to value during flight. this handheld test value)) 
+      } else if (ascent && !apogeeDetected && (maxAltitude - kalman_alt) >= DROP_THRESHOLD && acc_y<=1.5 && maxAcc_y>=50 && angVelMag < 2.5){ //(change to value during flight. this handheld test value)) 
         Serial.println("-------------Apogee Detected!!!-------------");
         apogeeDetected = true;
         digitalWrite(LED_G,LOW);
       }
       switch (currentState) {
         case PRELAUNCH:
-          if (acc_y > 4.0) {
+          if (acc_y > 40) {
             currentState = ASCENT;
             Serial.println("Launch successful -> ASCENT");
+            ascent = true;
             LoRa.beginPacket(); LoRa.printf("Launch successful -> ASCENT"); LoRa.endPacket();
           }
           break;
@@ -307,7 +324,11 @@ void loop() {
           break;
       }
     }
-    
+  }
+
+  else {
+    Serial.println("Waiting for ARM command from groundstation...");
+  }
 
     if (now - lastLogTime > 100) {
       lastLogTime = now;
